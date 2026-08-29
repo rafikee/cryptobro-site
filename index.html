@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cryptoBro</title>
+<meta name="description" content="A small trading bot, running on paper money, showing its work.">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="img/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta property="og:title" content="cryptoBro">
+<meta property="og:description" content="A small trading bot, running on paper money, showing its work.">
+<meta property="og:image" content="img/og.png">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="notice" id="notice" hidden></div>
+
+<header class="hero">
+  <div class="hero-bot">
+    <button class="bot" id="bot" aria-describedby="bubble">
+      <img id="bot-img" src="img/waiting.webp" alt="" width="672" height="972">
+    </button>
+    <p class="bubble" id="bubble" role="status"></p>
+  </div>
+
+  <div class="hero-read">
+    <p class="eyebrow">cryptoBro <span class="sep">/</span> ETH <span class="sep">/</span> <span class="tag">paper money</span></p>
+    <p class="equity" id="equity" data-count="0">&mdash;</p>
+    <dl class="deltas">
+      <div><dt>vs. the $1,000 it started with</dt><dd id="d-start">&mdash;</dd></div>
+      <div><dt>vs. just holding that much ETH</dt><dd id="d-hold">&mdash;</dd></div>
+    </dl>
+    <p class="book" id="book"></p>
+  </div>
+</header>
+
+<main>
+
+<section class="panel reveal" id="sec-chart">
+  <div class="head">
+    <h2>The money</h2>
+    <div class="legend" id="legend">
+      <button class="key on" id="key-bot" data-series="bot"><i></i>the bot</button>
+      <button class="key on" id="key-hold" data-series="hold"><i></i>holding ETH</button>
+    </div>
+  </div>
+  <figure class="chartwrap">
+    <svg id="chart" role="img" aria-labelledby="chart-title"><title id="chart-title">Equity over time against buying and holding the same amount of ETH</title></svg>
+    <div class="tip" id="tip" hidden></div>
+    <figcaption id="chart-note"></figcaption>
+  </figure>
+</section>
+
+<section class="panel reveal" id="sec-trades">
+  <div class="head"><h2>Round trips</h2></div>
+  <div id="trades"></div>
+</section>
+
+<section class="panel reveal" id="sec-wakes">
+  <div class="head">
+    <h2>Every time it woke up</h2>
+    <p class="hint">it checks the market every 4 hours &mdash; click a mark</p>
+  </div>
+  <div class="strip" id="strip"></div>
+  <p class="strip-note" id="strip-note"></p>
+</section>
+
+<section class="panel reveal" id="sec-log">
+  <div class="head">
+    <h2>What it decided, and why</h2>
+    <p class="hint">newest first &mdash; click one to read its reasoning</p>
+  </div>
+  <ol class="log" id="log"></ol>
+</section>
+
+</main>
+
+<footer>
+  <p>Paper money. Nothing here is advice, and the bot is not good at this yet.</p>
+  <p class="stamp" id="stamp"></p>
+</footer>
+
+<script src="js/character.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

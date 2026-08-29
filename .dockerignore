@@ -1,0 +1,7 @@
+# The originals are kept in git so the sprites can be regenerated, but they are
+# 3 MB of PNG the browser never asks for.
+art-src/
+tools/
+.github/
+.git/
+*.md

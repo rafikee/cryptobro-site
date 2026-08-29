@@ -1,0 +1,552 @@
+/* cryptoBro — the palette is sampled from the character art, not chosen.
+   `tools/prep-art.py` prints the dominant colours; these are those values.
+   The two chart series are the exception: they are the pair that passes the
+   dataviz validator's six checks on this surface (lightness band, chroma floor,
+   CVD separation, normal-vision floor, contrast). Do not swap them for the
+   brighter UI amber without re-running it — bright amber fails the band. */
+
+:root {
+  --bg:        #12100E;   /* the robot's screen, unlit */
+  --panel:     #1A1714;
+  --line:      #2C2722;
+  --line-soft: #221E1A;
+
+  --cream:     #E4D8C0;   /* its shell */
+  --dim:       #94897A;
+  --faint:     #6A6155;
+
+  --amber:     #FFB43C;   /* its pixels — UI accent and text only */
+  --amber-dim: #A8712099;
+
+  --bot:       #C8811A;   /* validated series pair */
+  --hold:      #5A87C4;
+
+  --gain:      #FFB43C;   /* always shipped with a + or − sign, never colour alone */
+  --loss:      #C4553D;
+
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  --pad: clamp(1.1rem, 4vw, 2.4rem);
+  --ease: cubic-bezier(.2, .7, .3, 1);
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--cream);
+  font: 400 16px/1.65 var(--sans);
+  /* A faint dot grid, the same idea as the character's dot-matrix face. Two
+     layers so it fades out toward the bottom instead of tiling forever. */
+  background-image:
+    radial-gradient(circle at center, #FFFFFF07 1px, transparent 1.1px),
+    radial-gradient(ellipse 120% 60% at 50% 0%, #FFB43C0A, transparent 70%);
+  background-size: 22px 22px, 100% 900px;
+  background-repeat: repeat, no-repeat;
+}
+
+h1, h2 { font-weight: 600; }
+
+/* ── the halt / stale strip ─────────────────────────────────────────────── */
+
+.notice {
+  margin: 0;
+  padding: .7rem var(--pad);
+  font: 600 12px/1.5 var(--mono);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--bg);
+  background: var(--amber);
+}
+.notice[data-kind="halt"] { background: var(--loss); color: #FFEDE8; }
+
+/* ── hero ───────────────────────────────────────────────────────────────── */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 330px) minmax(0, 1fr);
+  gap: clamp(1rem, 4vw, 3.5rem);
+  align-items: end;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 5vw, 3.5rem) var(--pad) clamp(2rem, 5vw, 3.5rem);
+}
+
+.hero-bot { position: relative; }
+
+.bot {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  /* The floor the robot stands on: a soft ellipse, not a box shadow. */
+  filter: drop-shadow(0 24px 26px #00000099);
+  transition: transform .5s var(--ease);
+}
+.bot:hover { transform: translateY(-6px) rotate(-.6deg); }
+.bot:active { transform: translateY(-1px) scale(.99); }
+.bot img { display: block; width: 100%; height: auto; }
+
+.bubble {
+  position: absolute;
+  top: 2%;
+  left: 68%;
+  width: max(210px, 15vw);
+  margin: 0;
+  padding: .7rem .85rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--cream);
+  font: 400 13px/1.5 var(--mono);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .35s var(--ease), transform .35s var(--ease);
+  pointer-events: none;
+  z-index: 2;
+}
+.bubble.show { opacity: 1; transform: none; }
+/* The tail — a rotated square, so it inherits the border and the fill. */
+.bubble::after {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 22px;
+  width: 8px;
+  height: 8px;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  transform: rotate(45deg);
+}
+
+.eyebrow {
+  margin: 0 0 .9rem;
+  font: 500 11px/1 var(--mono);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.eyebrow .sep { color: var(--faint); margin: 0 .35em; }
+.eyebrow .tag { color: var(--amber); }
+
+.equity {
+  margin: 0;
+  font: 300 clamp(3rem, 9vw, 5.2rem)/.95 var(--mono);
+  letter-spacing: -.03em;
+  color: var(--cream);
+  font-variant-numeric: tabular-nums;
+}
+
+.deltas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2.2rem;
+  margin: 1.4rem 0 0;
+}
+.deltas > div { min-width: 0; }
+.deltas dt {
+  font: 400 12px/1.6 var(--sans);
+  color: var(--dim);
+}
+.deltas dd {
+  margin: 0;
+  font: 500 clamp(1.15rem, 2.6vw, 1.5rem)/1.3 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.up { color: var(--gain); }
+.down { color: var(--loss); }
+.flat { color: var(--dim); }
+
+.book {
+  margin: 1.5rem 0 0;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--line-soft);
+  font: 400 13.5px/1.7 var(--mono);
+  color: var(--dim);
+}
+.book b { color: var(--cream); font-weight: 500; }
+
+/* ── sections ───────────────────────────────────────────────────────────── */
+
+main {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 var(--pad) 4rem;
+  display: grid;
+  gap: clamp(1rem, 3vw, 1.6rem);
+}
+
+.panel {
+  padding: clamp(1.1rem, 3vw, 1.8rem);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #17141199;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem 1.2rem;
+  margin-bottom: 1.4rem;
+}
+.head h2 {
+  position: relative;
+  margin: 0;
+  padding-left: .85rem;
+  font: 500 12px/1.4 var(--mono);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--cream);
+}
+/* The offset amber tick, instead of a full underline rule. */
+.head h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: .18em;
+  bottom: .18em;
+  width: 3px;
+  background: var(--amber);
+}
+.hint { margin: 0; font-size: 12.5px; color: var(--faint); }
+
+/* ── chart ──────────────────────────────────────────────────────────────── */
+
+.legend { display: flex; gap: .35rem; }
+.key {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .3rem .6rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: none;
+  color: var(--faint);
+  font: 400 12px/1 var(--mono);
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+}
+.key i { width: 14px; height: 2px; border-radius: 1px; background: currentColor; }
+.key.on { color: var(--dim); border-color: var(--line); }
+.key.on[data-series="bot"] i { background: var(--bot); }
+.key.on[data-series="hold"] i { background: var(--hold); }
+.key:hover { color: var(--cream); border-color: var(--faint); }
+.key:not(.on) { opacity: .45; }
+.key:not(.on) i { background: currentColor; }
+
+.chartwrap { position: relative; margin: 0; }
+#chart { display: block; width: 100%; height: clamp(200px, 34vw, 320px); overflow: visible; }
+#chart .grid { stroke: var(--line-soft); stroke-width: 1; }
+#chart .base { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 2 4; }
+#chart .axis { fill: var(--faint); font: 400 10.5px var(--mono); }
+#chart .line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#chart .line.bot { stroke: var(--bot); }
+#chart .line.hold { stroke: var(--hold); }
+#chart .area { fill: url(#botfade); }
+#chart .hair { stroke: var(--faint); stroke-width: 1; }
+#chart .dot { stroke: var(--bg); stroke-width: 2; }
+#chart .dot.bot { fill: var(--bot); }
+#chart .dot.hold { fill: var(--hold); }
+#chart .endlabel { font: 500 11px var(--mono); }
+#chart .endlabel.bot { fill: var(--bot); }
+#chart .endlabel.hold { fill: var(--hold); }
+#chart .act { fill: var(--amber); cursor: pointer; }
+#chart .hit { fill: transparent; cursor: pointer; }
+#chart .off { display: none; }
+
+/* Drawn on scroll. The dash length is set per-path in JS, since only the path
+   knows its own length. */
+#chart .line.draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); }
+.revealed #chart .line.draw { transition: stroke-dashoffset 1.5s var(--ease); stroke-dashoffset: 0; }
+
+.tip {
+  position: absolute;
+  z-index: 3;
+  min-width: 130px;
+  padding: .55rem .65rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #0D0B0AF2;
+  font: 400 12px/1.5 var(--mono);
+  pointer-events: none;
+  transform: translate(-50%, -115%);
+}
+.tip .when { color: var(--faint); margin-bottom: .3rem; }
+.tip .row { display: flex; align-items: center; gap: .45rem; }
+.tip .row b { color: var(--cream); font-weight: 500; font-variant-numeric: tabular-nums; }
+.tip .row span { color: var(--dim); }
+.tip i { width: 10px; height: 2px; border-radius: 1px; flex: none; }
+
+figcaption {
+  margin-top: .9rem;
+  font-size: 12.5px;
+  color: var(--faint);
+}
+
+/* ── round trips ────────────────────────────────────────────────────────── */
+
+table { width: 100%; border-collapse: collapse; font: 400 13px var(--mono); }
+th {
+  text-align: left;
+  padding: 0 .8rem .5rem 0;
+  font: 500 11px var(--mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+td { padding: .5rem .8rem .5rem 0; border-top: 1px solid var(--line-soft); font-variant-numeric: tabular-nums; }
+
+.empty {
+  margin: 0;
+  padding: .4rem 0 .2rem;
+  color: var(--dim);
+  font-size: 14.5px;
+  max-width: 56ch;
+}
+
+/* ── wake strip ─────────────────────────────────────────────────────────── */
+
+.strip { display: flex; flex-wrap: wrap; gap: 3px; }
+.mark {
+  width: 13px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 1px;
+  background: var(--line);
+  cursor: pointer;
+  transition: transform .15s var(--ease), background .15s;
+}
+.mark:hover, .mark[aria-current="true"] { transform: scaleY(1.16); }
+.mark[data-outcome="ok"] { background: var(--amber); }
+.mark[data-outcome="gated"] { background: #3B342C; }
+.mark[data-outcome="error"], .mark[data-outcome="quota"] { background: var(--loss); }
+.mark[data-outcome="halted"] { background: var(--faint); }
+.mark[data-traded="1"] { box-shadow: inset 0 0 0 2px var(--bg), 0 0 0 1px var(--amber); }
+
+.strip-note {
+  min-height: 2.9em;
+  margin: 1rem 0 0;
+  font: 400 13px/1.5 var(--mono);
+  color: var(--dim);
+  max-width: 70ch;
+}
+.strip-note b { color: var(--cream); font-weight: 500; }
+
+/* ── decision log ───────────────────────────────────────────────────────── */
+
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
+
+.entry {
+  border: 1px solid var(--line-soft);
+  border-left: 2px solid var(--line);
+  border-radius: 3px;
+  background: #14110F;
+  transition: border-color .3s var(--ease), background .3s var(--ease);
+}
+.entry[data-action="buy"] { border-left-color: var(--amber); }
+.entry[data-action="sell"] { border-left-color: var(--hold); }
+.entry[data-rejected="1"] { border-left-color: var(--loss); }
+.entry.lit { border-color: var(--amber); background: #1D1813; }
+
+.entry > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .3rem .9rem;
+  padding: .85rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+.entry > summary::-webkit-details-marker { display: none; }
+.entry .when { font: 400 12px var(--mono); color: var(--faint); min-width: 9.5em; }
+.entry .what { font: 500 13px var(--mono); letter-spacing: .04em; text-transform: uppercase; }
+.entry[data-action="buy"] .what { color: var(--amber); }
+.entry[data-action="sell"] .what { color: var(--hold); }
+.entry[data-action="hold"] .what { color: var(--dim); }
+.entry .said { flex: 1 1 22ch; min-width: 0; font-size: 13.5px; color: var(--dim); }
+.entry[open] .said { display: none; }
+.entry .more { font: 400 11px var(--mono); color: var(--faint); }
+.entry[open] .more::after { content: "−"; }
+.entry:not([open]) .more::after { content: "+"; }
+
+.entry .body { padding: 0 1rem 1.1rem; }
+.entry .body > * { max-width: 74ch; }
+.claim {
+  margin: 0 0 .9rem;
+  padding: .75rem .9rem;
+  border-left: 2px solid var(--line);
+  background: #100E0C;
+  font-size: 14px;
+}
+.claim .lab {
+  display: block;
+  margin-bottom: .3rem;
+  font: 500 10.5px var(--mono);
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.claim .by { display: block; margin-top: .45rem; font: 400 12px var(--mono); color: var(--faint); }
+.why { margin: 0; font-size: 14px; color: var(--dim); white-space: pre-wrap; }
+.filled { margin: .9rem 0 0; font: 400 12.5px var(--mono); color: var(--faint); }
+.rejected { color: var(--loss); }
+
+/* ── footer ─────────────────────────────────────────────────────────────── */
+
+footer {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 2rem var(--pad) 4rem;
+  border-top: 1px solid var(--line-soft);
+  color: var(--faint);
+  font-size: 13px;
+}
+footer p { margin: 0 0 .3rem; }
+.stamp { font: 400 12px var(--mono); }
+
+/* ── the scroll reveal ──────────────────────────────────────────────────── */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity .7s var(--ease), transform .7s var(--ease);
+}
+.reveal.revealed { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    transition-duration: .001ms !important;
+  }
+  .reveal { opacity: 1; transform: none; }
+}
+
+/* ── phone ──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+  .hero { grid-template-columns: 1fr; justify-items: center; text-align: left; }
+  .hero-bot { width: min(230px, 62vw); }
+  .hero-read { width: 100%; }
+  .bubble { left: auto; right: -6%; top: 4%; width: min(190px, 52vw); }
+  .bubble::after { left: auto; right: -5px; border: 0; border-right: 1px solid var(--line); border-top: 1px solid var(--line); }
+  .deltas { gap: .9rem 1.6rem; }
+  .entry .when { min-width: 100%; }
+  .entry .said { flex-basis: 100%; }
+}
+
+/* ── screenshot mode ────────────────────────────────────────────────────── */
+/* `?reveal=all` shows every section at once with no transitions. Without it a
+   tall headless screenshot captures the below-the-fold sections mid-fade, at
+   opacity 0, and the page looks broken rather than animated. */
+
+body[data-reveal="all"] .reveal { opacity: 1; transform: none; transition: none; }
+body[data-reveal="all"] #chart .line.draw { stroke-dasharray: none; stroke-dashoffset: 0; transition: none; }
+body[data-reveal="all"] .bubble { opacity: 1; transform: none; transition: none; }
+
+.linkish {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--amber);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.linkish:hover { color: var(--cream); }
+
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 2px; }
+
+/* Trade marks sit on the equity line and there can be dozens of them, so they are
+   texture at rest and only become targets under the pointer. At r=4 opaque they
+   turned a three-month line into a string of beads. */
+#chart .act { r: 2.5; opacity: .55; transition: opacity .15s, r .15s; }
+#chart .act:hover { opacity: 1; r: 5; }
+
+.summary {
+  margin: 0 0 1.2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line-soft);
+  font: 400 14px/1.7 var(--mono);
+  color: var(--dim);
+  max-width: 70ch;
+}
+.summary b { font-weight: 500; color: var(--cream); }
+.summary b.up { color: var(--gain); }
+.summary b.down { color: var(--loss); }
+
+.showmore {
+  display: block;
+  margin-top: .9rem;
+  padding: .55rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: none;
+  color: var(--dim);
+  font: 400 12px var(--mono);
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+}
+.showmore:hover { color: var(--amber); border-color: var(--faint); }
+
+/* One line, always. The log is for scanning; the full text is one click away and
+   an unclamped hold reason turns every row into a paragraph. */
+.entry .said {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.scrollx { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.scrollx table { min-width: 34rem; }
+
+/* Nothing on this page is allowed to make the document wider than the window.
+   Long monospace numbers and a six-column table both try. */
+.book, .summary, .strip-note, .entry .said, .why, .claim { overflow-wrap: anywhere; }
+
+@media (max-width: 560px) {
+  .deltas { display: grid; grid-template-columns: 1fr; gap: .8rem; }
+  .hero { justify-items: stretch; }
+  .hero-bot { width: min(230px, 62vw); justify-self: center; }
+}
+
+/* Grid items refuse to shrink below their content's min-content size, so one wide
+   child (the trades table, a long unbroken number) stretches the single column and
+   with it the whole document. This is the fix for that, and it is why the page no
+   longer scrolls sideways on a phone. */
+main > * { min-width: 0; }
+.panel > *, .head, .chartwrap { min-width: 0; max-width: 100%; }
+.log > li, .entry, .entry > summary, .entry .body { min-width: 0; }
+.entry > summary > * { min-width: 0; }
+
+/* On a phone the speech bubble sits above the robot instead of beside it. Beside
+   it, there is not enough room either side and it reaches past the page padding. */
+@media (max-width: 560px) {
+  .hero-bot { padding-top: 5.5rem; }
+  .bubble {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    min-width: 15rem;
+  }
+  .bubble::after {
+    left: 50%;
+    right: auto;
+    top: auto;
+    bottom: -5px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+  }
+}
