@@ -39,24 +39,18 @@ gh workflow run build-and-deploy -R rafikee/cryptobro-site
 | | |
 |---|---|
 | Public URL | `https://cryptobro.barada.dev` |
+| GitHub repo | `rafikee/cryptobro-site` (public) |
 | Image | `ghcr.io/rafikee/cryptobro-site:latest` (public) |
+| Coolify app + project | `cryptobro-site` |
 | Coolify app UUID | `p319uettglbv2xgyyd1px4gj` |
 | Ports | host `8102` → container `80` |
 | Server | `baradapi` (Pi 5, `ssh baradapi`) |
+| Checkout | `~/dev/cryptobro-site` |
 
-## The naming, which does not follow the convention
+## Why the hostname is not the app name
 
 The runbook says the repo, the Coolify app and the subdomain are all the same string. Here
-three of the four are **`cryptobro-site`** and the public hostname is **`cryptobro`**:
-
-| | |
-|---|---|
-| GitHub repo | `rafikee/cryptobro-site` |
-| GHCR image | `ghcr.io/rafikee/cryptobro-site` |
-| Coolify app + project | `cryptobro-site` |
-| Checkout | `~/dev/cryptobro-site` |
-| Public URL | `https://cryptobro.barada.dev` |
-
+everything is **`cryptobro-site`** except the public hostname, which is **`cryptobro`**.
 Two collisions forced it, and both are worth knowing before you try to "fix" the naming:
 
 - **`cryptobro` was not available as a repo or a directory, because the bot already owns
@@ -71,11 +65,16 @@ The practical consequence: **`verify-app.sh` needs its optional fourth argument*
 FQDN, because it otherwise assumes `<APP>.barada.dev` and would check
 `cryptobro-site.barada.dev`, which does not exist.
 
-## Secrets and env vars
+## Secrets
 
-Never bake them into the image — it's public. Coolify injects env at runtime; set them
-through the Coolify UI at https://coolify.barada.dev, or the API
-(`/api/v1/applications/p319uettglbv2xgyyd1px4gj/envs`), then redeploy.
+**This app has none, and should never need any.** It is nginx serving four static files
+plus a `fetch()` of a public URL — there is nothing to authenticate to. The only credential
+anywhere near it is the Coolify deploy token, which lives as a GitHub Actions secret on
+this repo and never enters the image or the container.
+
+If that ever changes, note that the image is public, so nothing goes in it: Coolify injects
+env at runtime via the UI at <https://coolify.barada.dev> or
+`/api/v1/applications/p319uettglbv2xgyyd1px4gj/envs`.
 
 ## When a deploy doesn't take
 
