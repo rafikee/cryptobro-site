@@ -67,8 +67,8 @@ FQDN, because it otherwise assumes `<APP>.barada.dev` and would check
 
 ## Secrets
 
-**This app has none, and should never need any.** It is nginx serving four static files
-plus a `fetch()` of a public URL — there is nothing to authenticate to. The only credential
+**This app has none, and should never need any.** It is nginx serving static files
+plus a `fetch()` of two public URLs — there is nothing to authenticate to. The only credential
 anywhere near it is the Coolify deploy token, which lives as a GitHub Actions secret on
 this repo and never enters the image or the container.
 
