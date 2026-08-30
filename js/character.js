@@ -17,6 +17,19 @@ function poseFor(state) {
   return POSES.includes(state) ? state : 'waiting';
 }
 
+/* A deliberate mirror of `publish.character_state` in Python.
+ *
+ * The payload already carries `now.state`, and that stays authoritative for anyone
+ * without JS. But the page re-marks the book against a live ETH price every minute,
+ * and a robot still grinning while the number underneath it has gone red would be
+ * worse than the duplication. Keep the two in step: flat wins over everything, and
+ * the comparison is against the starting stake, not against unrealised P&L.
+ */
+function stateFor(units, equity, startCapital) {
+  if (units <= 1e-12) return 'waiting';
+  return equity >= startCapital ? 'holding' : 'sweating';
+}
+
 const money = n => '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const DAY = 86400000;
 
@@ -84,8 +97,10 @@ const LINES = [
 
 /* Everything the lines are allowed to know, derived once. Keeping this separate
  * means a new line can never accidentally reach into raw payload shape. */
-function facts(data, now) {
+function facts(data, now, price) {
   const n = data.now || {};
+  const mark = price || n.mark;
+  const equity = n.units ? n.cash + n.units * mark : n.equity;
   const curve = data.curve || [];
   const last = curve[curve.length - 1];
   const start = data.start_capital || 0;
@@ -95,6 +110,8 @@ function facts(data, now) {
   let gatedStreak = 0;
   for (let i = wakes.length - 1; i >= 0 && !wakes[i].gate_passed; i--) gatedStreak++;
 
+  const bm = data.benchmark;
+  const hold = bm ? bm.units * mark : (last ? last.bh : 0);
   const age = wakes.length ? now - wakes[0].ts : 0;
   const stale = now - (data.generated_at || now) > 8 * 3600000;
 
@@ -105,10 +122,10 @@ function facts(data, now) {
     agoWords: relative(data.generated_at, now),
     state: n.state,
     open: (n.units || 0) > 0,
-    pnl: (n.equity || 0) - start,
-    holdPnl: last ? last.bh - start : 0,
-    beatingHold: last ? n.equity > last.bh : false,
-    stopDistance: n.stop && n.mark ? Math.max(0, n.mark - n.stop) * (n.units || 0) : null,
+    pnl: (equity || 0) - start,
+    holdPnl: hold ? hold - start : 0,
+    beatingHold: hold ? equity > hold : false,
+    stopDistance: n.stop && mark ? Math.max(0, mark - n.stop) * (n.units || 0) : null,
     exposure: n.exposure || 0,
     days: Math.max(1, Math.round(age / DAY)),
     wakes: wakes.length,
@@ -141,11 +158,11 @@ function relative(ts, now) {
 }
 
 /* All the lines that currently apply, in priority order. `nth` cycles. */
-function lines(data, now) {
-  const f = facts(data, now);
+function lines(data, now, price) {
+  const f = facts(data, now, price);
   return LINES.filter(l => { try { return l.when(f); } catch { return false; } })
               .map(l => { try { return l.say(f); } catch { return null; } })
               .filter(Boolean);
 }
 
-window.Character = { POSES, poseFor, lines, relative, dayWords, plural };
+window.Character = { POSES, poseFor, stateFor, lines, relative, dayWords, plural };

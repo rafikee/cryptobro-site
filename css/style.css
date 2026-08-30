@@ -682,3 +682,30 @@ main > * { min-width: 0; }
 @media (max-width: 720px) {
   .about-grid { grid-template-columns: 1fr; }
 }
+
+/* ── the live price line ────────────────────────────────────────────────── */
+
+.asof {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  margin: .7rem 0 0;
+  font: 400 12.5px/1 var(--mono);
+  color: var(--faint);
+}
+
+/* A slow pulse. It marks the number as live without behaving like an alert. */
+.pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 0 #FFB43C88;
+  animation: pip 2.6s ease-out infinite;
+}
+@keyframes pip {
+  0%   { box-shadow: 0 0 0 0 #FFB43C77; }
+  70%  { box-shadow: 0 0 0 7px #FFB43C00; }
+  100% { box-shadow: 0 0 0 0 #FFB43C00; }
+}
+@media (prefers-reduced-motion: reduce) { .pip { animation: none; } }

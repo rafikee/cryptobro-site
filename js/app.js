@@ -18,6 +18,19 @@
  */
 
 const REMOTE = 'https://raw.githubusercontent.com/rafikee/cryptobro-site/data/data.json';
+
+/* The live price is fetched by the reader's browser, not by the publisher.
+ *
+ * The publisher deliberately makes no network calls at all, which is what stops a
+ * website outage from ever touching the bot; putting a Kraken call in it would have
+ * given that up to make one number move. Doing it here costs our infrastructure
+ * nothing, and Kraken's public ticker needs no key and sends CORS headers back for
+ * this origin. Same exchange the bot trades on, so the price agrees with the ledger.
+ *
+ * It only re-marks what the book is worth *right now*. The curve stays on 4h bar
+ * closes, because bar closes are the only prices the bot ever acted on. */
+const PRICE_URL = 'https://api.kraken.com/0/public/Ticker?pair=ETHUSD';
+const PRICE_EVERY = 60000;
 const LOCAL = 'data/data.json';
 const STALE_MS = 8 * 3600 * 1000;   /* comfortably more than the 4h wake cadence */
 
@@ -70,42 +83,96 @@ function renderNotice() {
   box.hidden = false;
 }
 
+let MARK = null;        /* the price everything above the chart is marked at */
+let LIVE = false;
+
 function renderHero() {
+  countTo($('#equity'), DATA.now.cash + DATA.now.units * DATA.now.mark);
+  paint(DATA.now.mark, false);
+}
+
+/* Everything that depends on what ETH costs. Called once with the published bar
+   close, then again each time a live price lands. */
+function paint(price, live) {
   const n = DATA.now;
   const start = DATA.start_capital;
-  const last = DATA.curve[DATA.curve.length - 1];
+  MARK = price;
+  LIVE = live;
 
-  $('#bot-img').src = `img/${Character.poseFor(params.get('state') || n.state)}.webp`;
-  $('#bot-img').alt = `The bot, ${params.get('state') || n.state}`;
+  const equity = n.cash + n.units * price;
+  /* Fall back to the last published bar-close value when the payload predates the
+     `benchmark` field. Marking it at a live price needs the units; without them the
+     comparison is stale rather than absent, which is the better failure. */
+  const lastPt = DATA.curve.length ? DATA.curve[DATA.curve.length - 1] : null;
+  const hold = DATA.benchmark ? DATA.benchmark.units * price
+             : (lastPt ? lastPt.bh : null);
+  const state = params.get('state') || Character.stateFor(n.units, equity, start);
 
-  countTo($('#equity'), n.equity);
+  const img = $('#bot-img');
+  const src = `img/${Character.poseFor(state)}.webp`;
+  if (!img.src.endsWith(src)) { img.src = src; img.alt = `The bot, ${state}`; }
 
-  const vsStart = n.equity / start - 1;
+  if (live) $('#equity').textContent = fmtMoney(equity);
+
+  const vsStart = equity / start - 1;
   const dStart = $('#d-start');
-  dStart.textContent = `${fmtPct(vsStart)}  ${fmtSigned(n.equity - start)}`;
+  dStart.textContent = `${fmtPct(vsStart)}  ${fmtSigned(equity - start)}`;
   dStart.className = sign(vsStart);
 
   const dHold = $('#d-hold');
-  if (last) {
-    const gap = n.equity / last.bh - 1;
-    dHold.textContent = `${fmtPct(gap)}  ${fmtSigned(n.equity - last.bh)}`;
+  if (hold) {
+    const gap = equity / hold - 1;
+    dHold.textContent = `${fmtPct(gap)}  ${fmtSigned(equity - hold)}`;
     dHold.className = sign(gap);
   } else {
     dHold.textContent = 'not enough history yet';
     dHold.className = 'flat';
   }
 
+  const asof = $('#asof');
+  asof.textContent = '';
+  asof.append(text(`ETH ${fmtMoney(price)} `));
+  if (live) {
+    const dot = el('span', 'pip');
+    asof.append(dot, text(' live'));
+  } else {
+    asof.append(text(`at the ${fmtTime(DATA.curve.length ? DATA.curve[DATA.curve.length - 1].ts : DATA.generated_at)} close`));
+  }
+
   const book = $('#book');
   book.textContent = '';
   if (n.units > 0) {
+    const exposure = n.units * price / equity;
     book.append(
       text(`holding ${n.units.toFixed(6)} ETH bought around `), bold(fmtMoney(n.avg_entry)),
       text(', stop at '), bold(fmtMoney(n.stop)),
-      text(`. That is ${Math.round(n.exposure * 100)}% of the money in the market, with ${fmtMoney(n.cash)} still in cash.`)
+      text(`. That is ${Math.round(exposure * 100)}% of the money in the market, with ${fmtMoney(n.cash)} still in cash.`)
     );
   } else {
     book.append(text('Flat. '), bold(fmtMoney(n.cash)), text(' in cash and nothing at risk.'));
   }
+}
+
+/* Poll Kraken for the current price. Best effort in every direction: a failure
+   leaves the published bar-close numbers in place and relabels them honestly, and
+   polling stops while the tab is in the background. */
+async function wireLivePrice() {
+  if (params.get('data') || params.get('live') === 'off') return;
+
+  const tick = async () => {
+    if (document.hidden) return;
+    try {
+      const r = await fetch(PRICE_URL, { cache: 'no-store' });
+      const j = await r.json();
+      const pair = Object.values(j.result || {})[0];
+      const price = parseFloat(pair && pair.c && pair.c[0]);
+      if (Number.isFinite(price) && price > 0) paint(price, true);
+    } catch { /* keep the published numbers; they are still true, just older */ }
+  };
+
+  await tick();
+  setInterval(tick, PRICE_EVERY);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
 }
 
 const text = s => document.createTextNode(s);
@@ -274,9 +341,12 @@ function renderChart() {
   wireHover(svg, { hair, dotBot, dotHold, acted });
   applySeriesVisibility();
 
-  note.textContent = `Both lines start at ${fmtMoney(DATA.start_capital)} the moment the bot first woke up. `
-    + 'The blue one is what that same money would have done sitting in ETH, doing nothing at all. '
-    + 'Switch it off above to see the bot on its own scale.';
+  const fee = DATA.benchmark ? DATA.start_capital - DATA.curve[0].bh : 0;
+  note.textContent = `Both start from the same ${fmtMoney(DATA.start_capital)} at the moment the bot `
+    + 'first woke up. The blue line is what that money would have done bought straight into ETH and '
+    + (fee ? `left alone, after the ${fmtMoney(fee)} it costs to buy in. ` : 'left alone. ')
+    + 'Plotted at 4-hour closes, because those are the only prices the bot ever acted on. '
+    + 'Switch the blue line off to see the bot on its own scale.';
 }
 
 /* Round-ish tick values inside [lo, hi]: a 1/2/5 × power-of-ten step, the standard
@@ -658,10 +728,12 @@ function wireJumps() {
 
 function wireCharacter() {
   const bubble = $('#bubble');
-  const said = Character.lines(DATA, NOW);
   let i = 0;
 
   const say = () => {
+    /* Rebuilt on each press rather than once at load, so a line about being down
+       cannot outlive the price that made it true. */
+    const said = Character.lines(DATA, Date.now(), MARK);
     bubble.textContent = said[i % said.length];
     bubble.classList.add('show');
     i++;
@@ -693,6 +765,7 @@ function wireCharacter() {
   wireReveal();
   wireJumps();
   wireCharacter();
+  wireLivePrice();
 
   document.querySelectorAll('.key').forEach(k => k.addEventListener('click', () => {
     const other = k.dataset.series === 'bot' ? 'hold' : 'bot';
