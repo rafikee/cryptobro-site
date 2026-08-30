@@ -142,12 +142,20 @@ http://localhost:8765/?debug=width                     name whatever overflows t
 
 `?reveal=all` exists because sections start at `opacity: 0` until scrolled to, so a plain
 headless screenshot of the whole page captures blank space and looks like a layout bug.
-`?debug=width` writes its findings into `document.title`, so `--dump-dom | grep OVERFLOW`
-reads it. Both earned their keep during the build.
+`?debug=width` writes into `document.title` — scroll position, page height, the hash
+target's offset and opacity, then anything overflowing — so `--dump-dom | grep SCROLL`
+reads the lot. Both earned their keep during the build.
 
-**Headless Chrome on macOS will not go below about a 500 px viewport**, whatever
-`--window-size` says, because the window has a platform minimum. Narrow-layout checks top
-out there; `--force-device-scale-factor` does not help, it only scales the raster.
+**Two headless limitations to know before you debug the wrong thing:**
+
+- **A screenshot taken after a programmatic scroll comes back solid background**, even
+  though the page is fine. Loading `/#about` scrolls correctly (`--dump-dom` reports
+  `#about top=23 opacity=1`) and the PNG still has zero non-background pixels. Do not go
+  looking for a rendering bug — check anchor jumps with `?debug=width` and `--dump-dom`,
+  not with `--screenshot`.
+- **Chrome on macOS will not go below about a 500 px viewport**, whatever `--window-size`
+  says, because the window has a platform minimum. Narrow-layout checks top out there, and
+  `--force-device-scale-factor` does not help; it only scales the raster.
 
 Two files carry the design: `css/style.css` (the palette, sampled from the art by
 `tools/prep-art.py`, as custom properties at the top) and `js/character.js` (which pose

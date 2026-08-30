@@ -617,6 +617,43 @@ function wireReveal() {
   all.forEach(s => io.observe(s));
 }
 
+/* ── the explainer ────────────────────────────────────────────────────────── */
+
+/* "what is this?" near the top jumps to the explainer at the very bottom. It is a
+   real <a href="#about">, so it works with JS off; this only adds the smooth ride
+   and the highlight on arrival.
+   The force-reveal matters: the target starts at opacity 0 until scrolled to, so
+   without it you glide down to what looks like an empty panel and the observer
+   only catches up once you have stopped. */
+function wireJumps() {
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const target = document.getElementById(a.getAttribute('href').slice(1));
+      if (!target) return;
+      e.preventDefault();
+      target.classList.add('revealed');
+      target.scrollIntoView({ behavior: noMotion() ? 'auto' : 'smooth', block: 'start' });
+      if (!target.classList.contains('about')) return;
+      target.classList.add('lit');
+      setTimeout(() => target.classList.remove('lit'), 2200);
+    });
+  });
+
+  /* A shared #about link needs re-aiming. The browser does its native anchor jump
+     while parsing, before any of this page exists — the log, the chart and the
+     trades are all built by JS — so it scrolls to where the section sat on an
+     empty document and then everything renders underneath it, leaving the reader
+     somewhere in the middle of the page. Reveal it and scroll again, now that the
+     section is actually where it will stay. */
+  if (location.hash) {
+    const target = document.getElementById(location.hash.slice(1));
+    if (target) {
+      target.classList.add('revealed');
+      requestAnimationFrame(() => target.scrollIntoView({ behavior: 'auto', block: 'start' }));
+    }
+  }
+}
+
 /* ── the robot's mouth ────────────────────────────────────────────────────── */
 
 function wireCharacter() {
@@ -654,6 +691,7 @@ function wireCharacter() {
   renderLog();
   renderChart();
   wireReveal();
+  wireJumps();
   wireCharacter();
 
   document.querySelectorAll('.key').forEach(k => k.addEventListener('click', () => {
@@ -705,7 +743,14 @@ function reportOverflow() {
   });
   src.sort((a, b) => +b.split('+').pop() - +a.split('+').pop());
 
-  document.title = `OVERFLOW win=${w} doc=${document.documentElement.scrollWidth}` +
+  /* Where the reader actually ended up, which is the other thing a headless run
+     cannot show you. `top` near 0 means an anchor jump landed correctly; an
+     `opacity` of 0 on a revealed section is a virtual-time artifact, not a bug. */
+  const hashed = location.hash && document.getElementById(location.hash.slice(1));
+  const r = hashed ? hashed.getBoundingClientRect() : null;
+  document.title = `SCROLL y=${Math.round(scrollY)} pageH=${document.body.scrollHeight}` +
+    (r ? ` ${location.hash} top=${Math.round(r.top)} opacity=${getComputedStyle(hashed).opacity}` : '') +
+    ` :: OVERFLOW win=${w} doc=${document.documentElement.scrollWidth}` +
     ` :: SOURCE ${src.slice(0, 8).join(' ') || 'none'}` +
     ` :: WIDE ${bad.slice(0, 4).join(' ') || 'none'}`;
 }
