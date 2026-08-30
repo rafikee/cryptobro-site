@@ -60,10 +60,10 @@ function renderNotice() {
   const stale = NOW - DATA.generated_at > STALE_MS;
   if (DATA.halted) {
     box.dataset.kind = 'halt';
-    box.textContent = 'Halted by hand — every decision is being rejected on purpose';
+    box.textContent = 'Halted by hand. Every decision is being rejected on purpose.';
   } else if (stale) {
     box.dataset.kind = 'stale';
-    box.textContent = `Stale — last update ${Character.relative(DATA.generated_at, NOW)}. The bot may be fine; the thing that feeds this page is not.`;
+    box.textContent = `Stale. Last update ${Character.relative(DATA.generated_at, NOW)}, and the bot may well be fine. The thing that feeds this page is not.`;
   } else {
     return;
   }
@@ -101,7 +101,7 @@ function renderHero() {
     book.append(
       text(`holding ${n.units.toFixed(6)} ETH bought around `), bold(fmtMoney(n.avg_entry)),
       text(', stop at '), bold(fmtMoney(n.stop)),
-      text(` — that is ${Math.round(n.exposure * 100)}% of the money in the market, ${fmtMoney(n.cash)} still in cash.`)
+      text(`. That is ${Math.round(n.exposure * 100)}% of the money in the market, with ${fmtMoney(n.cash)} still in cash.`)
     );
   } else {
     book.append(text('Flat. '), bold(fmtMoney(n.cash)), text(' in cash and nothing at risk.'));
@@ -258,7 +258,7 @@ function renderChart() {
     const c = mk('circle', { class: 'act', cx: x(ts), cy: y(curve.find(p => p.ts === ts).eq), r: 2.5 });
     c.dataset.decision = d.id;
     const label = mk('title');
-    label.textContent = `${d.action} — click for the reasoning`;
+    label.textContent = `${d.action}: click for the reasoning`;
     c.append(label);
     svg.append(c);
   }
@@ -473,7 +473,7 @@ function renderStrip() {
       strip.querySelectorAll('.mark').forEach(m => m.removeAttribute('aria-current'));
       b.setAttribute('aria-current', 'true');
       note.textContent = '';
-      note.append(bold(fmtTime(w.ts)), text(' — '),
+      note.append(bold(fmtTime(w.ts)), text(': '),
                   text(w.gate_reason || `${w.outcome}, no reason recorded.`));
       if (w.decision_id) {
         note.append(text(' '));
