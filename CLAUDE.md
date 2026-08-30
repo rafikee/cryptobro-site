@@ -122,6 +122,31 @@ launchctl kickstart -k gui/$(id -u)/com.rafikee.cryptobro-publish
 curl -s https://raw.githubusercontent.com/rafikee/cryptobro-site/data/data.json | head -c 200
 ```
 
+## Cloudflare overrides this app's cache headers, and there is a rule stopping it
+
+**The barada.dev zone sets Browser Cache TTL to 14400 (4 hours), and that overrides
+whatever the origin sends.** `nginx.conf` here deliberately sends `Cache-Control: no-cache`
+for html/css/js so a deploy is picked up on the next load, and Cloudflare was rewriting
+that to `max-age=14400` on the way out. The result is a deploy that verifies green from
+every angle — GHCR digest, container digest, `curl` of the live CSS — while a phone that
+visited in the last four hours keeps rendering the old stylesheet. That cost a round trip
+of "are you sure?" during the build, and the honest answer was no.
+
+Fixed with a **Cache Rule scoped to this hostname**, not by changing the zone setting,
+which would have altered caching for all eight apps:
+
+```
+ruleset 2d1cb2184c7247799724496db792a1cd  (phase http_request_cache_settings)
+  (http.host eq "cryptobro.barada.dev")  ->  browser_ttl: respect_origin
+```
+
+Check it is still doing its job with `curl -sI https://cryptobro.barada.dev/css/style.css`
+— expect `cache-control: no-cache`, not `max-age=14400`. Images are the exception and
+should read `max-age=2592000`; they only change when the character does.
+
+**After a deploy that changes CSS or JS, an already-open browser still needs one hard
+reload** if it cached under the old rule. New visitors do not.
+
 ## Working on the page
 
 ```bash
