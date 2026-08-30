@@ -147,6 +147,40 @@ should read `max-age=2592000`; they only change when the character does.
 **After a deploy that changes CSS or JS, an already-open browser still needs one hard
 reload** if it cached under the old rule. New visitors do not.
 
+## The one outbound call this page makes
+
+The big number is **live**, and it is the reader's browser that makes it live, not the
+publisher. `js/app.js` polls Kraken's public ticker every 60 seconds and re-marks the
+equity, both deltas, the exposure percentage and the character's pose against it.
+
+```
+https://api.kraken.com/0/public/Ticker?pair=ETHUSD   ->  result.<pair>.c[0]
+```
+
+**Do not move this into `publish.py`.** That was the first design and it was wrong. The
+publisher makes no network calls at all, and that is precisely what makes it incapable of
+affecting the bot: there is nothing in it that an outage can wedge. Fetching in the browser
+costs our infrastructure nothing, needs no key, and scales with readers rather than with
+time.
+
+Three things it depends on, in the order they would break:
+
+- **CORS.** Kraken echoes `access-control-allow-origin` back for this origin. If that ever
+  stops, every fetch fails and the page silently keeps the published bar-close numbers,
+  relabelling them `at the HH:MM close` instead of `live`. Degraded, not broken.
+- **The same exchange the bot trades on**, so the live price agrees with the ledger. Do not
+  swap it for a cheaper aggregator without thinking about that.
+- **`data.json` carrying `benchmark`** (`units`, `entry_price`, `fee`). The browser needs
+  the benchmark's units to re-mark buy-and-hold at the live price. Payloads written before
+  2026-08-30 lack it, and the page falls back to the last published bar-close value.
+
+`?live=off` disables the polling, which is what you want for a deterministic screenshot.
+`?data=<url>` implies it, so fixtures never hit the network.
+
+**The chart is deliberately not live.** It is plotted at 4-hour closes, because those are
+the only prices the bot ever acted on. A live number on top of a bar-close curve is the
+intended shape, not an inconsistency.
+
 ## Working on the page
 
 ```bash
