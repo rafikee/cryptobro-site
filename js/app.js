@@ -56,7 +56,9 @@ let NOW = Date.now();
 
 async function load() {
   const override = params.get('data');
-  const sources = override ? [override] : [REMOTE, LOCAL];
+  /* Retired 2026-11-17: the final snapshot is baked into the image, so the page no
+     longer depends on the data branch. REMOTE is kept for the history. */
+  const sources = override ? [override] : [LOCAL];
   for (const url of sources) {
     try {
       const r = await fetch(url, { cache: 'no-cache' });
@@ -71,7 +73,10 @@ async function load() {
 function renderNotice() {
   const box = $('#notice');
   const stale = NOW - DATA.generated_at > STALE_MS;
-  if (DATA.halted) {
+  if (DATA.retired) {
+    box.dataset.kind = 'retired';
+    box.textContent = `Retired on Nov 17, 2026. Nothing is running anymore; these are the final numbers.`;
+  } else if (DATA.halted) {
     box.dataset.kind = 'halt';
     box.textContent = 'Halted by hand. Every decision is being rejected on purpose.';
   } else if (stale) {
@@ -157,7 +162,7 @@ function paint(price, live) {
    leaves the published bar-close numbers in place and relabels them honestly, and
    polling stops while the tab is in the background. */
 async function wireLivePrice() {
-  if (params.get('data') || params.get('live') === 'off') return;
+  if (DATA.retired || params.get('data') || params.get('live') === 'off') return;
 
   const tick = async () => {
     if (document.hidden) return;

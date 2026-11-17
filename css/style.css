@@ -62,6 +62,7 @@ h1, h2 { font-weight: 600; }
   color: var(--bg);
   background: var(--amber);
 }
+.notice[data-kind="retired"] { background: var(--cream); color: var(--bg); }
 .notice[data-kind="halt"] { background: var(--loss); color: #FFEDE8; }
 
 /* ── hero ───────────────────────────────────────────────────────────────── */

@@ -1,5 +1,11 @@
 # cryptobro-site
 
+**Retired 2026-11-17, along with the bot.** The page is frozen: the final snapshot is
+baked into the image at `data/data.json` (with a `retired` field), `app.js` no longer
+reads the `data` branch, and the live Kraken price poll is off. Nothing publishes to it
+anymore. It stays up because it's one idle nginx container on the Pi. To take it down for
+good, follow the teardown section of `~/dev/new-app-runbook.md`.
+
 The status page for the **cryptoBro** trading bot (`~/dev/cryptoBro`). Static: no build step, no framework, no dependencies.
 
 ## Deploying

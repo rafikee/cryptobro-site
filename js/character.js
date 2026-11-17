@@ -38,6 +38,10 @@ const DAY = 86400000;
  * through whatever survived, which is the whole reason there is more than one. */
 const LINES = [
   {
+    when: d => d.retired,
+    say: () => 'I have been switched off for good. Down 0.6% while ETH fell 27%. I will take it.'
+  },
+  {
     when: d => d.halted,
     say: () => 'A human pulled the switch. I am standing here doing nothing, on purpose.'
   },
@@ -113,10 +117,11 @@ function facts(data, now, price) {
   const bm = data.benchmark;
   const hold = bm ? bm.units * mark : (last ? last.bh : 0);
   const age = wakes.length ? now - wakes[0].ts : 0;
-  const stale = now - (data.generated_at || now) > 8 * 3600000;
+  const stale = !data.retired && now - (data.generated_at || now) > 8 * 3600000;
 
   return {
     now,
+    retired: !!data.retired,
     halted: !!data.halted,
     stale,
     agoWords: relative(data.generated_at, now),
